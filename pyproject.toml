@@ -1,0 +1,29 @@
+[project]
+name = "ccc-scoringretail"
+version = "1.0"
+description = "Credit Control Center — Credit Intelligence Platform"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "flask>=3.0,<4.0",
+    "gunicorn>=21.2",
+    "pandas>=2.0",
+    "openpyxl>=3.1",
+    "python-dotenv>=1.0",
+    "argon2-cffi>=23.1",
+    "pytest>=7.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"main.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"

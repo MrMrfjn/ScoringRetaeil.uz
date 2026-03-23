@@ -1,0 +1,13 @@
+flask>=3.0,<4.0
+gunicorn>=21.2
+pytest>=7.0
+pandas>=2.0,<3.0
+openpyxl>=3.1
+xlrd>=2.0
+scikit-learn>=1.3,<2.0
+numpy>=1.24
+python-dotenv>=1.0
+argon2-cffi>=23.1,<24
+# MS Access integration (branch sync agent)
+pyodbc>=4.0
+requests>=2.28

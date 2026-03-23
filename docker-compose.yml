@@ -1,0 +1,109 @@
+version: "3.9"
+
+services:
+
+  backend:
+    build: .
+    container_name: ccc_backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      FLASK_ENV:    production
+      DB_PATH:      /data/db/credit_control.db
+      UPLOAD_DIR:   /data/uploads
+      EXPORT_DIR:   /data/exports
+      BACKUP_PATH:  /data/backups
+    volumes:
+      - ccc_data:/data
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    networks:
+      - ccc_internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: ccc_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deployment/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deployment/ssl:/etc/nginx/ssl:ro
+      - ./deployment/certbot/www:/var/www/certbot:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - ccc_internal
+      - ccc_external
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  backup:
+    build: .
+    container_name: ccc_backup
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_PATH:               /data/db/credit_control.db
+      BACKUP_PATH:           /data/backups
+      BACKUP_RETENTION_DAYS: "30"
+    volumes:
+      - ccc_data:/data
+    entrypoint: >
+      sh -c "
+        while true; do
+          HOUR=$$(date +%-H);
+          if [ \"$$HOUR\" = \"2\" ]; then
+            python /app/scripts/backup_database.py;
+            sleep 3600;
+          else
+            sleep 300;
+          fi;
+        done
+      "
+    networks:
+      - ccc_internal
+
+  monitor:
+    build: .
+    container_name: ccc_monitor
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HEALTH_URL:  http://backend:8000/health
+      DB_PATH:     /data/db/credit_control.db
+      BACKUP_PATH: /data/backups
+      MONITOR_LOG: /data/logs/monitor.log
+    volumes:
+      - ccc_data:/data
+    entrypoint: >
+      sh -c "while true; do python /app/scripts/health_monitor.py; sleep 300; done"
+    networks:
+      - ccc_internal
+
+volumes:
+  ccc_data:
+    driver: local
+
+networks:
+  ccc_internal:
+    driver: bridge
+    internal: true
+  ccc_external:
+    driver: bridge
